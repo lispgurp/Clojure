@@ -166,7 +166,7 @@
 ; (0 1 1 2 3 5 8 13 21 34)
 
 (defn my-fibo-classic 
-  "getting the nth, this totally blows the stack for large N dude, O(N) stack frames, are you kidding me?"
+  "getting the nth value, this totally blows the stack for large N dude, O(N) stack frames, are you kidding me?"
   [n]
   (cond (= n 0) 0
         (= n 1) 1
@@ -175,7 +175,7 @@
            (my-fibo-classic (- n 2)))))
 
 (defn my-fibo-tail
-  "getting the nth, using recur instead of self recursion "
+  "getting the nth value, using recur instead of self recursion "
   [n]
   (loop [fn1 0
          fn2 1
@@ -199,16 +199,84 @@
 
  
 (defn my-fibo-tail-acc2*
-  "getting the stream of 0..n, using fn call/recur instead of self recursion "
-  [fn1 fn2 i acc]
-    (if (zero? i)
-      (cons 0 acc)
-      (recur fn2 
-             (+ fn1 fn2) 
-             (dec i)
-             (conj acc (+ fn1 fn2)))))
+  "getting the stream of 0..n, using fn call/recur instead of self recursion using a separate kickoff definition"
+  [i acc n]
+  (if (>= i n)
+    acc
+    (let [fibbonaci-number (+ (nth acc (- i 1)) 
+                              (nth acc (- i 2)))]
+      (my-fibo-tail-acc2* (inc i) 
+                          (conj acc fibbonaci-number) 
+                          n))))
 
 (defn my-fibo-tail-acc2 [n]
-  (my-fibo-tail-acc2* 0 1 n '[]))
+  (my-fibo-tail-acc2* 2 '[0 1] n))
+
+(defn my-fibo-tail-acc3 [n]
+  "getting the stream of 0..n, using letfn/refur, eliminating the kickoff function"
+  (letfn [(fib3
+            [i acc n]
+            (if (>= i n)
+              acc
+              (let [fibbonaci-number (+ (nth acc (- i 1)) 
+                                        (nth acc (- i 2)))]
+                (recur (inc i) (conj acc fibbonaci-number) n))))]
+    (fib3 2 '[0 1] n)))
+
+; 1. remove base case limitation (e.g. make it "look" like infinite recursion
+; 2. cons a lazy stream as the "return" value
+; 3. remove the old accumulation strategy ?
+
+(defn my-fibo-lazy1 [n]
+  "getting the stream of 0 to n using lazy sequences, removing the termination condition (1)"
+  (take n
+        (letfn [(fib3 [i acc]
+                  (let [fibbonaci-number (+ (nth acc (- i 1)) 
+                                            (nth acc (- i 2)))]
+                    (lazy-seq
+                      (fib3 (inc i) (conj acc fibbonaci-number)))))]
+          (fib3 2 [0 1]))))
+
+(defn my-fibo-lazy2 [n]
+  "getting the stream of 0 to n using lazy sequences, consing the lazy-stream, instead of returning (2)"
+  (take n
+        (letfn [(fib3 [i acc]
+                  (let [fibbonaci-number (+ (nth acc (- i 1)) 
+                                            (nth acc (- i 2)))]
+                    (if (= i 2)
+                      (concat acc
+                              (list fibbonaci-number)
+                              (lazy-seq
+                                (fib3 (inc i) (conj acc fibbonaci-number))))
+                      (lazy-seq
+                        (cons fibbonaci-number
+                              (fib3 (inc i) (conj acc fibbonaci-number)))))))]
+          (fib3 2 [0 1]))))
+
+(defn my-fibo-lazy3 [n]
+  "getting the stream of 0 to n using lazy sequences, removing the old accumulation strategy (3)"
+  (take n
+        (letfn [(fib3 [fn1 fn2]
+                  (let [fibbonaci-number (+ fn1 fn2)]
+                    (lazy-seq
+                      (cons fibbonaci-number 
+                            (fib3 fn2 fibbonaci-number)))))]
+          (concat '(0 1)
+                  (fib3 0 1)))))
+
+; conclusion (so far)
+
+; these are three completely different ways to solve a problem with fp
+; classic - top down based on literal translation of recursive definition
+; tail recursive - accumulation strategy passed down to the last call as the base case
+; lazy - seed the base case value as the finite starter of an infinite recursion wrapped in a lazy list!
+
+
+
+  
+
+
+            
+
   
 
